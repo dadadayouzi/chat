@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>chat</title>
+    <!-- 最新版本的 Bootstrap 核心 CSS 文件 -->
+    <link rel="stylesheet" href="https://cdn.bootcss.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <style>
+        .user{
+            color: skyblue;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="row">
+        <div class="col-md-9">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4 class="text-center">欢迎来到聊天室</h4>
+                </div>
+                <div class="panel-body">
+                    <ul class="list-group" id="messageUl">
+
+                    </ul>
+                </div>
+                <div class="panel-footer">
+                    <div class="row">
+                        <div class="col-md-10">
+                            <input id="txtMsg" type="text" class="form-control"  onkeydown="handlekeydown(event)">
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-primary" onclick="send()">发送
+                            <span class="glyphicon glyphicon-send
+"></span>
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4>在线用户</h4>
+                </div>
+                <div class="panel-body">
+                    <ul class="list-group" id="userUl">
+
+                    </ul>
+                </div>
+                <div class="panel-footer">
+                    <h4 id="onlineUsers"></h4>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!--使用socket需要引入这个，路径是写死的，是固定格式-->
+
+<script src="socket.io/socket.io.js"></script>
+<script>
+    //此脚本会在window上增加一个io的属性
+    //不写路径、写'/',写‘http://localhost:8080/’，效果一样，都是指的同一个路径
+    let socket=io();
+    //当客户端连接服务器成功后
+    socket.on('connect',function () {
+        console.log('连接成功');
+        //向服务器发送消息
+//        socket.send('server');
+        socket.emit('users');
+    });
+
+    let messageUl=document.querySelector('#messageUl');
+    let userUl=document.querySelector('#userUl');
+    let onlineUsers=document.querySelector('#onlineUsers');
+    let txtMsg=document.querySelector('#txtMsg');
+
+    //监听服务器发过来的消息
+    socket.on('message',function (msgObj) {
+        let li=document.createElement('li');
+        li.className='list-group-item';
+        li.innerHTML=`${msgObj.username}:${msgObj.content} <span class="pull-right">${msgObj.createAt}</span>`;
+        messageUl.appendChild(li);
+    });
+
+    socket.on('userList',function (userList) {
+       userUl.innerHTML=userList.map(item=>(
+           `<li class="list-group-item">${item}</li>`
+       )).join('');
+        countUser();
+    });
+
+    socket.on('user-added',function (username) {
+        let li=document.createElement('li');
+        li.className='list-group-item';
+        li.innerHTML=`<span class="user">${username}</span>`;
+        userUl.appendChild(li);
+        countUser();
+    });
+
+    function countUser() {
+        onlineUsers.innerHTML=`在线人数：${userUl.children.length}`;
+    }
+
+    //发送事件
+    function send() {
+        let content=txtMsg.value;//先拿到聊天的内容
+        socket.send(content);
+        txtMsg.value='';
+    }
+    function handlekeydown(event) {
+        if(event.keyCode===13){
+            send();
+        }
+    }
+
+    //给父级绑定点击事件，事件委托
+    //要判断点击的是span而非别的元素
+    userUl.addEventListener('click',function (event) {
+        if(event.target.className==='user'){
+            let username=event.target.innerHTML;
+            txtMsg.value=`@${username} `;
+        }
+    })
+</script>
+</body>
+</html>
